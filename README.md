@@ -5,6 +5,8 @@
 
 Rust-first SDK for Inactu verify/execute/receipt flows.
 
+Ecosystem map: `inactu/docs/ecosystem.md` in the substrate repository.
+
 This repository is intentionally thin in `0.x` and wraps `inactu-cli` to avoid
 API drift while the substrate stabilizes.
 
