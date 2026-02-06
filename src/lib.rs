@@ -198,6 +198,11 @@ where
 }
 
 fn validate_verify_request(req: &VerifyRequest) -> Result<()> {
+    if req.keys_digest.is_none() {
+        return Err(SdkError::InvalidRequest(
+            "keys_digest is required for verify_bundle".to_string(),
+        ));
+    }
     if req.require_cosign && req.oci_ref.is_none() {
         return Err(SdkError::InvalidRequest(
             "oci_ref is required when require_cosign is true".to_string(),
@@ -207,6 +212,11 @@ fn validate_verify_request(req: &VerifyRequest) -> Result<()> {
 }
 
 fn validate_execute_request(req: &ExecuteRequest) -> Result<()> {
+    if req.keys_digest.is_none() {
+        return Err(SdkError::InvalidRequest(
+            "keys_digest is required for execute_verified".to_string(),
+        ));
+    }
     if req.require_cosign && req.oci_ref.is_none() {
         return Err(SdkError::InvalidRequest(
             "oci_ref is required when require_cosign is true".to_string(),

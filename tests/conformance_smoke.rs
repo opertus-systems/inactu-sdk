@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use inactu_sdk::{CliRunner, InactuSdk, VerifyRequest};
+use sha2::Digest as _;
 
 #[test]
 fn verify_good_vector_smoke() {
@@ -11,11 +12,13 @@ fn verify_good_vector_smoke() {
     };
     let cli_bin = discover_or_build_inactu_cli(&root).expect("discover/build inactu-cli");
     let sdk = InactuSdk::with_runner(CliRunner::new(cli_bin));
+    let keys = root.join("test-vectors/good/minimal-zero-cap/public-keys.json");
+    let keys_digest = sha256_file(&keys).expect("keys digest should compute");
 
     sdk.verify_bundle(VerifyRequest {
         bundle: root.join("test-vectors/good/minimal-zero-cap"),
-        keys: root.join("test-vectors/good/minimal-zero-cap/public-keys.json"),
-        keys_digest: None,
+        keys,
+        keys_digest: Some(keys_digest),
         require_cosign: false,
         oci_ref: None,
         allow_experimental: false,
@@ -66,4 +69,9 @@ fn discover_or_build_inactu_cli(root: &Path) -> Result<PathBuf, String> {
         ));
     }
     Ok(candidate)
+}
+
+fn sha256_file(path: &Path) -> Result<String, String> {
+    let bytes = std::fs::read(path).map_err(|e| format!("failed to read {}: {e}", path.display()))?;
+    Ok(format!("sha256:{:x}", sha2::Sha256::digest(bytes)))
 }
