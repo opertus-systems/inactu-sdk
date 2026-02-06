@@ -98,5 +98,5 @@ test("smoke verify against local inactu vector when configured", async (t: TestC
     keys: join(root, "test-vectors/good/minimal-zero-cap/public-keys.json"),
   });
 
-  assert.match(out.stdout, /OK verify/);
+  assert.match(out.stdout, /^OK artifact=sha256:[a-f0-9]{64} signers=\d+$/m);
 });

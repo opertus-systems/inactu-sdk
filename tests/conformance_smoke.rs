@@ -72,6 +72,7 @@ fn discover_or_build_inactu_cli(root: &Path) -> Result<PathBuf, String> {
 }
 
 fn sha256_file(path: &Path) -> Result<String, String> {
-    let bytes = std::fs::read(path).map_err(|e| format!("failed to read {}: {e}", path.display()))?;
+    let bytes =
+        std::fs::read(path).map_err(|e| format!("failed to read {}: {e}", path.display()))?;
     Ok(format!("sha256:{:x}", sha2::Sha256::digest(bytes)))
 }
