@@ -33,6 +33,9 @@ test("verifyBundle builds expected args", async () => {
     keysDigest: "sha256:abc",
     requireCosign: true,
     ociRef: "ghcr.io/acme/skill:1",
+    cosignKey: "./cosign.pub",
+    cosignCertIdentity: "https://github.com/acme/workflow@refs/heads/main",
+    cosignCertOidcIssuer: "https://token.actions.githubusercontent.com",
     allowExperimental: true,
   };
 
@@ -50,6 +53,12 @@ test("verifyBundle builds expected args", async () => {
   assert.ok(runner.lastArgs.includes("--require-cosign"));
   assert.ok(runner.lastArgs.includes("--oci-ref"));
   assert.ok(runner.lastArgs.includes("ghcr.io/acme/skill:1"));
+  assert.ok(runner.lastArgs.includes("--cosign-key"));
+  assert.ok(runner.lastArgs.includes("./cosign.pub"));
+  assert.ok(runner.lastArgs.includes("--cosign-cert-identity"));
+  assert.ok(runner.lastArgs.includes("https://github.com/acme/workflow@refs/heads/main"));
+  assert.ok(runner.lastArgs.includes("--cosign-cert-oidc-issuer"));
+  assert.ok(runner.lastArgs.includes("https://token.actions.githubusercontent.com"));
   assert.ok(runner.lastArgs.includes("--allow-experimental"));
 });
 
@@ -65,6 +74,75 @@ test("executeVerified enforces ociRef when requireCosign is true", async () => {
     input: "./input.json",
     receipt: "./receipt.json",
     requireCosign: true,
+  };
+
+  await assert.rejects(() => sdk.executeVerified(req), (err: unknown) => {
+    assert.ok(err instanceof SdkError);
+    assert.equal((err as SdkError).code, "INVALID_REQUEST");
+    return true;
+  });
+});
+
+test("executeVerified enforces cosignKey when requireCosign is true", async () => {
+  const runner = new FakeRunner();
+  const sdk = new ProvenactSdk(runner);
+
+  const req: ExecuteRequest = {
+    bundle: "./bundle",
+    keys: "./keys.json",
+    keysDigest: "sha256:abc",
+    policy: "./policy.json",
+    input: "./input.json",
+    receipt: "./receipt.json",
+    requireCosign: true,
+    ociRef: "ghcr.io/acme/skill:1",
+  };
+
+  await assert.rejects(() => sdk.executeVerified(req), (err: unknown) => {
+    assert.ok(err instanceof SdkError);
+    assert.equal((err as SdkError).code, "INVALID_REQUEST");
+    return true;
+  });
+});
+
+test("executeVerified enforces cosignCertIdentity when requireCosign is true", async () => {
+  const runner = new FakeRunner();
+  const sdk = new ProvenactSdk(runner);
+
+  const req: ExecuteRequest = {
+    bundle: "./bundle",
+    keys: "./keys.json",
+    keysDigest: "sha256:abc",
+    policy: "./policy.json",
+    input: "./input.json",
+    receipt: "./receipt.json",
+    requireCosign: true,
+    ociRef: "ghcr.io/acme/skill:1",
+    cosignKey: "./cosign.pub",
+  };
+
+  await assert.rejects(() => sdk.executeVerified(req), (err: unknown) => {
+    assert.ok(err instanceof SdkError);
+    assert.equal((err as SdkError).code, "INVALID_REQUEST");
+    return true;
+  });
+});
+
+test("executeVerified enforces cosignCertOidcIssuer when requireCosign is true", async () => {
+  const runner = new FakeRunner();
+  const sdk = new ProvenactSdk(runner);
+
+  const req: ExecuteRequest = {
+    bundle: "./bundle",
+    keys: "./keys.json",
+    keysDigest: "sha256:abc",
+    policy: "./policy.json",
+    input: "./input.json",
+    receipt: "./receipt.json",
+    requireCosign: true,
+    ociRef: "ghcr.io/acme/skill:1",
+    cosignKey: "./cosign.pub",
+    cosignCertIdentity: "https://github.com/acme/workflow@refs/heads/main",
   };
 
   await assert.rejects(() => sdk.executeVerified(req), (err: unknown) => {
@@ -112,6 +190,9 @@ test("executeVerified rejects blank ociRef when requireCosign is true", async ()
     receipt: "./receipt.json",
     requireCosign: true,
     ociRef: " ",
+    cosignKey: "./cosign.pub",
+    cosignCertIdentity: "https://github.com/acme/workflow@refs/heads/main",
+    cosignCertOidcIssuer: "https://token.actions.githubusercontent.com",
   };
 
   await assert.rejects(() => sdk.executeVerified(req), (err: unknown) => {

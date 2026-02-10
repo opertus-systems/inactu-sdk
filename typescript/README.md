@@ -5,6 +5,9 @@
 
 TypeScript mirror of the Rust `provenact-sdk` alpha surface.
 
+`CliRunner` requires an absolute `provenact-cli` path by default; set
+`PROVENACT_ALLOW_PATH_CLI=1` to opt into `PATH` lookup.
+
 ## Stable API (`0.x`)
 
 - `verifyBundle(req)`
@@ -12,6 +15,8 @@ TypeScript mirror of the Rust `provenact-sdk` alpha surface.
 - `parseReceipt(path)`
 
 `req.keysDigest` is required for both `verifyBundle` and `executeVerified`.
+When `req.requireCosign` is `true`, `req.ociRef`, `req.cosignKey`,
+`req.cosignCertIdentity`, and `req.cosignCertOidcIssuer` are all required.
 
 ## Experimental API
 
@@ -29,8 +34,8 @@ npm test
 ## Smoke Test Against Local Substrate
 
 ```bash
-PROVENACT_VECTOR_ROOT=../../provenact \
-PROVENACT_CLI_BIN=../../provenact/target/debug/provenact-cli \
+PROVENACT_VECTOR_ROOT=../../provenact-cli \
+PROVENACT_CLI_BIN=../../provenact-cli/target/debug/provenact-cli \
 npm test
 ```
 

@@ -11,6 +11,9 @@ fn main() -> Result<(), SdkError> {
         keys_digest: Some("sha256:<public-keys-json-digest>".to_string()),
         require_cosign: false,
         oci_ref: None,
+        cosign_key: None,
+        cosign_cert_identity: None,
+        cosign_cert_oidc_issuer: None,
         allow_experimental: false,
     })?;
 
@@ -23,6 +26,9 @@ fn main() -> Result<(), SdkError> {
         receipt: PathBuf::from("./receipt.json"),
         require_cosign: false,
         oci_ref: None,
+        cosign_key: None,
+        cosign_cert_identity: None,
+        cosign_cert_oidc_issuer: None,
         allow_experimental: false,
     })?;
 
