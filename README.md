@@ -31,8 +31,9 @@ cargo add provenact-sdk
 
 ## Prerequisite
 
-`provenact-cli` must be available on `PATH` (or configure `CliRunner::new(...)` with
-an explicit binary path).
+By default, `CliRunner` requires an absolute `provenact-cli` path
+(`CliRunner::new("/abs/path/to/provenact-cli")`).
+Set `PROVENACT_ALLOW_PATH_CLI=1` to opt into `PATH` lookup.
 
 ## Example
 
@@ -48,6 +49,9 @@ sdk.verify_bundle(VerifyRequest {
     keys_digest: Some("sha256:<public-keys-json-digest>".to_string()),
     require_cosign: false,
     oci_ref: None,
+    cosign_key: None,
+    cosign_cert_identity: None,
+    cosign_cert_oidc_issuer: None,
     allow_experimental: false,
 })?;
 
@@ -60,6 +64,9 @@ let out = sdk.execute_verified(ExecuteRequest {
     receipt: PathBuf::from("./receipt.json"),
     require_cosign: false,
     oci_ref: None,
+    cosign_key: None,
+    cosign_cert_identity: None,
+    cosign_cert_oidc_issuer: None,
     allow_experimental: false,
 })?;
 
@@ -67,6 +74,9 @@ let receipt = sdk.parse_receipt(out.receipt_path)?;
 println!("{}", receipt.raw["schema_version"]);
 // Ok::<(), provenact_sdk::SdkError>(())
 ```
+
+When `require_cosign` is `true`, set all of: `oci_ref`, `cosign_key`,
+`cosign_cert_identity`, and `cosign_cert_oidc_issuer`.
 
 ## Versioning
 
@@ -103,10 +113,10 @@ npm test
 Run smoke tests against a local substrate checkout:
 
 ```bash
-PROVENACT_VECTOR_ROOT=../provenact \
-PROVENACT_CLI_BIN=../provenact/target/debug/provenact-cli \
+PROVENACT_VECTOR_ROOT=../provenact-cli \
+PROVENACT_CLI_BIN=../provenact-cli/target/debug/provenact-cli \
 cargo test --test conformance_smoke -- --nocapture
 ```
 
 If `PROVENACT_CLI_BIN` is not set, the test attempts to build `provenact-cli` from
-`PROVENACT_VECTOR_ROOT` (or from sibling `../provenact`).
+`PROVENACT_VECTOR_ROOT` (or from sibling `../provenact-cli`).

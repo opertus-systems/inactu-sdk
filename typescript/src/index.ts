@@ -8,6 +8,9 @@ export interface VerifyRequest {
   keysDigest: string;
   requireCosign?: boolean;
   ociRef?: string;
+  cosignKey?: string;
+  cosignCertIdentity?: string;
+  cosignCertOidcIssuer?: string;
   allowExperimental?: boolean;
 }
 
@@ -20,6 +23,9 @@ export interface ExecuteRequest {
   receipt: string;
   requireCosign?: boolean;
   ociRef?: string;
+  cosignKey?: string;
+  cosignCertIdentity?: string;
+  cosignCertOidcIssuer?: string;
   allowExperimental?: boolean;
 }
 
@@ -118,6 +124,15 @@ export class ProvenactSdk {
     if (req.ociRef) {
       args.push("--oci-ref", req.ociRef);
     }
+    if (req.cosignKey) {
+      args.push("--cosign-key", req.cosignKey);
+    }
+    if (req.cosignCertIdentity) {
+      args.push("--cosign-cert-identity", req.cosignCertIdentity);
+    }
+    if (req.cosignCertOidcIssuer) {
+      args.push("--cosign-cert-oidc-issuer", req.cosignCertOidcIssuer);
+    }
     if (req.allowExperimental) {
       args.push("--allow-experimental");
     }
@@ -150,6 +165,15 @@ export class ProvenactSdk {
     }
     if (req.ociRef) {
       args.push("--oci-ref", req.ociRef);
+    }
+    if (req.cosignKey) {
+      args.push("--cosign-key", req.cosignKey);
+    }
+    if (req.cosignCertIdentity) {
+      args.push("--cosign-cert-identity", req.cosignCertIdentity);
+    }
+    if (req.cosignCertOidcIssuer) {
+      args.push("--cosign-cert-oidc-issuer", req.cosignCertOidcIssuer);
     }
     if (req.allowExperimental) {
       args.push("--allow-experimental");
@@ -192,6 +216,15 @@ function validateVerifyRequest(req: VerifyRequest): void {
   if (req.requireCosign && !req.ociRef?.trim()) {
     throw new SdkError("INVALID_REQUEST", "ociRef is required when requireCosign is true");
   }
+  if (req.requireCosign && !req.cosignKey?.trim()) {
+    throw new SdkError("INVALID_REQUEST", "cosignKey is required when requireCosign is true");
+  }
+  if (req.requireCosign && !req.cosignCertIdentity?.trim()) {
+    throw new SdkError("INVALID_REQUEST", "cosignCertIdentity is required when requireCosign is true");
+  }
+  if (req.requireCosign && !req.cosignCertOidcIssuer?.trim()) {
+    throw new SdkError("INVALID_REQUEST", "cosignCertOidcIssuer is required when requireCosign is true");
+  }
 }
 
 function validateExecuteRequest(req: ExecuteRequest): void {
@@ -200,5 +233,14 @@ function validateExecuteRequest(req: ExecuteRequest): void {
   }
   if (req.requireCosign && !req.ociRef?.trim()) {
     throw new SdkError("INVALID_REQUEST", "ociRef is required when requireCosign is true");
+  }
+  if (req.requireCosign && !req.cosignKey?.trim()) {
+    throw new SdkError("INVALID_REQUEST", "cosignKey is required when requireCosign is true");
+  }
+  if (req.requireCosign && !req.cosignCertIdentity?.trim()) {
+    throw new SdkError("INVALID_REQUEST", "cosignCertIdentity is required when requireCosign is true");
+  }
+  if (req.requireCosign && !req.cosignCertOidcIssuer?.trim()) {
+    throw new SdkError("INVALID_REQUEST", "cosignCertOidcIssuer is required when requireCosign is true");
   }
 }

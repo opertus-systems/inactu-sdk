@@ -14,6 +14,9 @@ pub struct VerifyRequest {
     pub keys_digest: Option<String>,
     pub require_cosign: bool,
     pub oci_ref: Option<String>,
+    pub cosign_key: Option<PathBuf>,
+    pub cosign_cert_identity: Option<String>,
+    pub cosign_cert_oidc_issuer: Option<String>,
     pub allow_experimental: bool,
 }
 
@@ -27,6 +30,9 @@ pub struct ExecuteRequest {
     pub receipt: PathBuf,
     pub require_cosign: bool,
     pub oci_ref: Option<String>,
+    pub cosign_key: Option<PathBuf>,
+    pub cosign_cert_identity: Option<String>,
+    pub cosign_cert_oidc_issuer: Option<String>,
     pub allow_experimental: bool,
 }
 
@@ -170,6 +176,18 @@ where
             args.push("--oci-ref".to_string());
             args.push(oci_ref);
         }
+        if let Some(cosign_key) = req.cosign_key {
+            args.push("--cosign-key".to_string());
+            args.push(cosign_key.display().to_string());
+        }
+        if let Some(cosign_cert_identity) = req.cosign_cert_identity {
+            args.push("--cosign-cert-identity".to_string());
+            args.push(cosign_cert_identity);
+        }
+        if let Some(cosign_cert_oidc_issuer) = req.cosign_cert_oidc_issuer {
+            args.push("--cosign-cert-oidc-issuer".to_string());
+            args.push(cosign_cert_oidc_issuer);
+        }
         if req.allow_experimental {
             args.push("--allow-experimental".to_string());
         }
@@ -204,6 +222,18 @@ where
         if let Some(oci_ref) = req.oci_ref {
             args.push("--oci-ref".to_string());
             args.push(oci_ref);
+        }
+        if let Some(cosign_key) = req.cosign_key {
+            args.push("--cosign-key".to_string());
+            args.push(cosign_key.display().to_string());
+        }
+        if let Some(cosign_cert_identity) = req.cosign_cert_identity {
+            args.push("--cosign-cert-identity".to_string());
+            args.push(cosign_cert_identity);
+        }
+        if let Some(cosign_cert_oidc_issuer) = req.cosign_cert_oidc_issuer {
+            args.push("--cosign-cert-oidc-issuer".to_string());
+            args.push(cosign_cert_oidc_issuer);
         }
         if req.allow_experimental {
             args.push("--allow-experimental".to_string());
@@ -247,6 +277,35 @@ fn validate_verify_request(req: &VerifyRequest) -> Result<()> {
             "oci_ref is required when require_cosign is true".to_string(),
         ));
     }
+    if req.require_cosign && req.cosign_key.is_none() {
+        return Err(SdkError::InvalidRequest(
+            "cosign_key is required when require_cosign is true".to_string(),
+        ));
+    }
+    if req.require_cosign
+        && req
+            .cosign_cert_identity
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .is_none()
+    {
+        return Err(SdkError::InvalidRequest(
+            "cosign_cert_identity is required when require_cosign is true".to_string(),
+        ));
+    }
+    if req.require_cosign
+        && req
+            .cosign_cert_oidc_issuer
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .is_none()
+    {
+        return Err(SdkError::InvalidRequest(
+            "cosign_cert_oidc_issuer is required when require_cosign is true".to_string(),
+        ));
+    }
     Ok(())
 }
 
@@ -272,6 +331,35 @@ fn validate_execute_request(req: &ExecuteRequest) -> Result<()> {
     {
         return Err(SdkError::InvalidRequest(
             "oci_ref is required when require_cosign is true".to_string(),
+        ));
+    }
+    if req.require_cosign && req.cosign_key.is_none() {
+        return Err(SdkError::InvalidRequest(
+            "cosign_key is required when require_cosign is true".to_string(),
+        ));
+    }
+    if req.require_cosign
+        && req
+            .cosign_cert_identity
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .is_none()
+    {
+        return Err(SdkError::InvalidRequest(
+            "cosign_cert_identity is required when require_cosign is true".to_string(),
+        ));
+    }
+    if req.require_cosign
+        && req
+            .cosign_cert_oidc_issuer
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .is_none()
+    {
+        return Err(SdkError::InvalidRequest(
+            "cosign_cert_oidc_issuer is required when require_cosign is true".to_string(),
         ));
     }
     Ok(())
@@ -338,6 +426,13 @@ mod tests {
             keys_digest: Some("sha256:abc".to_string()),
             require_cosign: true,
             oci_ref: Some("ghcr.io/acme/skill:1".to_string()),
+            cosign_key: Some(PathBuf::from("./cosign.pub")),
+            cosign_cert_identity: Some(
+                "https://github.com/acme/workflow@refs/heads/main".to_string(),
+            ),
+            cosign_cert_oidc_issuer: Some(
+                "https://token.actions.githubusercontent.com".to_string(),
+            ),
             allow_experimental: true,
         };
         let _ = sdk.verify_bundle(req).expect("verify ok");
@@ -355,6 +450,12 @@ mod tests {
         assert!(args.contains(&"--require-cosign".to_string()));
         assert!(args.contains(&"--oci-ref".to_string()));
         assert!(args.contains(&"ghcr.io/acme/skill:1".to_string()));
+        assert!(args.contains(&"--cosign-key".to_string()));
+        assert!(args.contains(&"./cosign.pub".to_string()));
+        assert!(args.contains(&"--cosign-cert-identity".to_string()));
+        assert!(args.contains(&"https://github.com/acme/workflow@refs/heads/main".to_string()));
+        assert!(args.contains(&"--cosign-cert-oidc-issuer".to_string()));
+        assert!(args.contains(&"https://token.actions.githubusercontent.com".to_string()));
         assert!(args.contains(&"--allow-experimental".to_string()));
     }
 
@@ -371,6 +472,9 @@ mod tests {
             receipt: PathBuf::from("./receipt.json"),
             require_cosign: true,
             oci_ref: None,
+            cosign_key: None,
+            cosign_cert_identity: None,
+            cosign_cert_oidc_issuer: None,
             allow_experimental: false,
         };
 
@@ -389,6 +493,9 @@ mod tests {
             keys_digest: Some("   ".to_string()),
             require_cosign: false,
             oci_ref: None,
+            cosign_key: None,
+            cosign_cert_identity: None,
+            cosign_cert_oidc_issuer: None,
             allow_experimental: false,
         };
 
@@ -409,6 +516,13 @@ mod tests {
             receipt: PathBuf::from("./receipt.json"),
             require_cosign: true,
             oci_ref: Some(" ".to_string()),
+            cosign_key: Some(PathBuf::from("./cosign.pub")),
+            cosign_cert_identity: Some(
+                "https://github.com/acme/workflow@refs/heads/main".to_string(),
+            ),
+            cosign_cert_oidc_issuer: Some(
+                "https://token.actions.githubusercontent.com".to_string(),
+            ),
             allow_experimental: false,
         };
 

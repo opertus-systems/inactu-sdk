@@ -21,6 +21,9 @@ fn verify_good_vector_smoke() {
         keys_digest: Some(keys_digest),
         require_cosign: false,
         oci_ref: None,
+        cosign_key: None,
+        cosign_cert_identity: None,
+        cosign_cert_oidc_issuer: None,
         allow_experimental: false,
     })
     .expect("verify should pass");
@@ -33,12 +36,12 @@ fn discover_provenact_root() -> Result<PathBuf, String> {
     let fallback = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .ok_or_else(|| "workspace parent not found".to_string())?
-        .join("provenact");
+        .join("provenact-cli");
     if fallback.is_dir() {
         Ok(fallback)
     } else {
         Err(
-            "PROVENACT_VECTOR_ROOT not set and sibling ../provenact not found; cannot run smoke test"
+            "PROVENACT_VECTOR_ROOT not set and sibling ../provenact-cli not found; cannot run smoke test"
                 .to_string(),
         )
     }
