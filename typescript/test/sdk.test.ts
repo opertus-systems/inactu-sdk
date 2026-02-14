@@ -14,6 +14,9 @@ import {
   type VerifyRequest,
 } from "../src/index";
 
+const TEST_KEYS_DIGEST =
+  "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
 class FakeRunner implements CommandRunner {
   lastArgs: string[] = [];
 
@@ -30,7 +33,7 @@ test("verifyBundle builds expected args", async () => {
   const req: VerifyRequest = {
     bundle: "./bundle",
     keys: "./keys.json",
-    keysDigest: "sha256:abc",
+    keysDigest: TEST_KEYS_DIGEST,
     requireCosign: true,
     ociRef: "ghcr.io/acme/skill:1",
     cosignKey: "./cosign.pub",
@@ -49,7 +52,7 @@ test("verifyBundle builds expected args", async () => {
     "./keys.json",
   ]);
   assert.ok(runner.lastArgs.includes("--keys-digest"));
-  assert.ok(runner.lastArgs.includes("sha256:abc"));
+  assert.ok(runner.lastArgs.includes(TEST_KEYS_DIGEST));
   assert.ok(runner.lastArgs.includes("--require-cosign"));
   assert.ok(runner.lastArgs.includes("--oci-ref"));
   assert.ok(runner.lastArgs.includes("ghcr.io/acme/skill:1"));
@@ -69,12 +72,12 @@ test("verifyBundle trims keysDigest before forwarding", async () => {
   await sdk.verifyBundle({
     bundle: "./bundle",
     keys: "./keys.json",
-    keysDigest: "  sha256:abc  ",
+    keysDigest: `  ${TEST_KEYS_DIGEST}  `,
   });
 
   const digestFlagIndex = runner.lastArgs.indexOf("--keys-digest");
   assert.notEqual(digestFlagIndex, -1);
-  assert.equal(runner.lastArgs[digestFlagIndex + 1], "sha256:abc");
+  assert.equal(runner.lastArgs[digestFlagIndex + 1], TEST_KEYS_DIGEST);
 });
 
 test("executeVerified enforces ociRef when requireCosign is true", async () => {
@@ -84,7 +87,7 @@ test("executeVerified enforces ociRef when requireCosign is true", async () => {
   const req: ExecuteRequest = {
     bundle: "./bundle",
     keys: "./keys.json",
-    keysDigest: "sha256:abc",
+    keysDigest: TEST_KEYS_DIGEST,
     policy: "./policy.json",
     input: "./input.json",
     receipt: "./receipt.json",
@@ -105,7 +108,7 @@ test("executeVerified enforces cosignKey when requireCosign is true", async () =
   const req: ExecuteRequest = {
     bundle: "./bundle",
     keys: "./keys.json",
-    keysDigest: "sha256:abc",
+    keysDigest: TEST_KEYS_DIGEST,
     policy: "./policy.json",
     input: "./input.json",
     receipt: "./receipt.json",
@@ -127,7 +130,7 @@ test("executeVerified enforces cosignCertIdentity when requireCosign is true", a
   const req: ExecuteRequest = {
     bundle: "./bundle",
     keys: "./keys.json",
-    keysDigest: "sha256:abc",
+    keysDigest: TEST_KEYS_DIGEST,
     policy: "./policy.json",
     input: "./input.json",
     receipt: "./receipt.json",
@@ -150,7 +153,7 @@ test("executeVerified enforces cosignCertOidcIssuer when requireCosign is true",
   const req: ExecuteRequest = {
     bundle: "./bundle",
     keys: "./keys.json",
-    keysDigest: "sha256:abc",
+    keysDigest: TEST_KEYS_DIGEST,
     policy: "./policy.json",
     input: "./input.json",
     receipt: "./receipt.json",
@@ -178,6 +181,21 @@ test("parseReceipt reads json", async () => {
   assert.deepEqual(receipt.raw, { schema_version: "1.0.0" });
 });
 
+test("parseReceipt rejects oversized files", async () => {
+  const runner = new FakeRunner();
+  const sdk = new ProvenactSdk(runner);
+  const dir = await mkdtemp(join(tmpdir(), "provenact-sdk-ts-"));
+  const receiptPath = join(dir, "receipt.json");
+  await writeFile(receiptPath, Buffer.alloc(1_048_577, 120));
+
+  await assert.rejects(() => sdk.parseReceipt(receiptPath), (err: unknown) => {
+    assert.ok(err instanceof SdkError);
+    assert.equal((err as SdkError).code, "INVALID_REQUEST");
+    assert.match((err as SdkError).message, /exceeds maximum size/);
+    return true;
+  });
+});
+
 test("verifyBundle rejects missing keysDigest", async () => {
   const runner = new FakeRunner();
   const sdk = new ProvenactSdk(runner);
@@ -192,6 +210,22 @@ test("verifyBundle rejects missing keysDigest", async () => {
   });
 });
 
+test("verifyBundle rejects malformed keysDigest", async () => {
+  const runner = new FakeRunner();
+  const sdk = new ProvenactSdk(runner);
+
+  await assert.rejects(() => sdk.verifyBundle({
+    bundle: "./bundle",
+    keys: "./keys.json",
+    keysDigest: "sha256:abc",
+  }), (err: unknown) => {
+    assert.ok(err instanceof SdkError);
+    assert.equal((err as SdkError).code, "INVALID_REQUEST");
+    assert.match((err as SdkError).message, /keysDigest must match/);
+    return true;
+  });
+});
+
 test("verifyBundle rejects blank bundle path", async () => {
   const runner = new FakeRunner();
   const sdk = new ProvenactSdk(runner);
@@ -199,7 +233,7 @@ test("verifyBundle rejects blank bundle path", async () => {
   await assert.rejects(() => sdk.verifyBundle({
     bundle: "   ",
     keys: "./keys.json",
-    keysDigest: "sha256:abc",
+    keysDigest: TEST_KEYS_DIGEST,
   }), (err: unknown) => {
     assert.ok(err instanceof SdkError);
     assert.equal((err as SdkError).code, "INVALID_REQUEST");
@@ -214,7 +248,7 @@ test("executeVerified rejects blank ociRef when requireCosign is true", async ()
   const req: ExecuteRequest = {
     bundle: "./bundle",
     keys: "./keys.json",
-    keysDigest: "sha256:abc",
+    keysDigest: TEST_KEYS_DIGEST,
     policy: "./policy.json",
     input: "./input.json",
     receipt: "./receipt.json",
@@ -239,7 +273,7 @@ test("executeVerified rejects blank receipt path", async () => {
   const req: ExecuteRequest = {
     bundle: "./bundle",
     keys: "./keys.json",
-    keysDigest: "sha256:abc",
+    keysDigest: TEST_KEYS_DIGEST,
     policy: "./policy.json",
     input: "./input.json",
     receipt: " ",
@@ -259,7 +293,7 @@ test("executeVerified rejects blank cosignKey when requireCosign is true", async
   const req: ExecuteRequest = {
     bundle: "./bundle",
     keys: "./keys.json",
-    keysDigest: "sha256:abc",
+    keysDigest: TEST_KEYS_DIGEST,
     policy: "./policy.json",
     input: "./input.json",
     receipt: "./receipt.json",

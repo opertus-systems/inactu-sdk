@@ -1,6 +1,9 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { isAbsolute } from "node:path";
+
+const SHA256_HEX_LEN = 64;
+const MAX_RECEIPT_BYTES = 1_048_576;
 
 export interface VerifyRequest {
   bundle: string;
@@ -163,15 +166,38 @@ export class ProvenactSdk {
   }
 
   async parseReceipt(path: string): Promise<Receipt> {
-    let data: string;
+    const receiptPath = validateRequiredPath(path, "receipt");
+    let metadata: Awaited<ReturnType<typeof stat>>;
     try {
-      data = await readFile(path, "utf8");
+      metadata = await stat(receiptPath);
     } catch (err) {
       throw new SdkError("IO_ERROR", (err as Error).message);
     }
+    if (!metadata.isFile()) {
+      throw new SdkError("INVALID_REQUEST", "receipt path must point to a regular file");
+    }
+    if (metadata.size > MAX_RECEIPT_BYTES) {
+      throw new SdkError(
+        "INVALID_REQUEST",
+        `receipt file exceeds maximum size of ${MAX_RECEIPT_BYTES} bytes`
+      );
+    }
+
+    let data: Buffer;
+    try {
+      data = await readFile(receiptPath);
+    } catch (err) {
+      throw new SdkError("IO_ERROR", (err as Error).message);
+    }
+    if (data.byteLength > MAX_RECEIPT_BYTES) {
+      throw new SdkError(
+        "INVALID_REQUEST",
+        `receipt file exceeds maximum size of ${MAX_RECEIPT_BYTES} bytes`
+      );
+    }
 
     try {
-      return { raw: JSON.parse(data) };
+      return { raw: JSON.parse(data.toString("utf8")) };
     } catch (err) {
       throw new SdkError("JSON_ERROR", (err as Error).message);
     }
@@ -204,6 +230,9 @@ function validateRequest(req: CommonRequest): string {
   const keysDigest = normalizeOptional(req.keysDigest);
   if (!keysDigest) {
     throw new SdkError("INVALID_REQUEST", "keysDigest is required and must not be blank");
+  }
+  if (!isValidSha256PrefixedHex(keysDigest)) {
+    throw new SdkError("INVALID_REQUEST", "keysDigest must match sha256:<64 lowercase hex>");
   }
   if (req.requireCosign && !normalizeOptional(req.ociRef)) {
     throw new SdkError("INVALID_REQUEST", "ociRef is required when requireCosign is true");
@@ -243,4 +272,15 @@ function appendCommonFlags(args: string[], req: CommonRequest): void {
   if (req.allowExperimental) {
     args.push("--allow-experimental");
   }
+}
+
+function isValidSha256PrefixedHex(value: string): boolean {
+  if (!value.startsWith("sha256:")) {
+    return false;
+  }
+  const digest = value.slice("sha256:".length);
+  if (digest.length !== SHA256_HEX_LEN) {
+    return false;
+  }
+  return /^[0-9a-f]+$/.test(digest);
 }
