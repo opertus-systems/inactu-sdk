@@ -400,7 +400,7 @@ fn is_valid_sha256_prefixed_hex(value: &str) -> bool {
     digest_hex.len() == SHA256_HEX_LEN
         && digest_hex
             .bytes()
-            .all(|byte| byte.is_ascii_digit() || (byte >= b'a' && byte <= b'f'))
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 pub mod experimental {
