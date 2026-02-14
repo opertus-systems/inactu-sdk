@@ -1,5 +1,5 @@
 use std::ffi::{OsStr, OsString};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
 use serde_json::Value;
@@ -103,11 +103,7 @@ impl CommandRunner for CliRunner {
         let allow_path_bin = std::env::var("PROVENACT_ALLOW_PATH_CLI")
             .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
             .unwrap_or(false);
-        if !self.bin.is_absolute() && !allow_path_bin {
-            return Err(SdkError::InvalidRequest(
-                "CliRunner binary must be an absolute path; set PROVENACT_ALLOW_PATH_CLI=1 to opt into PATH lookup".to_string(),
-            ));
-        }
+        validate_cli_binary_path(&self.bin, allow_path_bin)?;
         let collected: Vec<OsString> = args
             .into_iter()
             .map(|arg| arg.as_ref().to_os_string())
@@ -401,6 +397,25 @@ fn is_valid_sha256_prefixed_hex(value: &str) -> bool {
         && digest_hex
             .bytes()
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+fn validate_cli_binary_path(bin: &Path, allow_path_bin: bool) -> Result<()> {
+    if bin.is_absolute() {
+        return Ok(());
+    }
+    if !allow_path_bin {
+        return Err(SdkError::InvalidRequest(
+            "CliRunner binary must be an absolute path; set PROVENACT_ALLOW_PATH_CLI=1 to opt into PATH lookup".to_string(),
+        ));
+    }
+    let mut components = bin.components();
+    match (components.next(), components.next()) {
+        (Some(Component::Normal(_)), None) => Ok(()),
+        _ => Err(SdkError::InvalidRequest(
+            "CliRunner binary must be a simple command name when PROVENACT_ALLOW_PATH_CLI=1"
+                .to_string(),
+        )),
+    }
 }
 
 pub mod experimental {
@@ -718,6 +733,25 @@ mod tests {
         std::fs::write(&receipt_path, vec![b'x'; (MAX_RECEIPT_BYTES as usize) + 1]).expect("write");
 
         let err = sdk.parse_receipt(&receipt_path).expect_err("must fail");
+        assert!(matches!(err, SdkError::InvalidRequest(_)));
+    }
+
+    #[test]
+    fn cli_binary_validation_requires_absolute_path_without_opt_in() {
+        let err =
+            validate_cli_binary_path(Path::new("provenact-cli"), false).expect_err("must fail");
+        assert!(matches!(err, SdkError::InvalidRequest(_)));
+    }
+
+    #[test]
+    fn cli_binary_validation_allows_path_lookup_name_with_opt_in() {
+        assert!(validate_cli_binary_path(Path::new("provenact-cli"), true).is_ok());
+    }
+
+    #[test]
+    fn cli_binary_validation_rejects_relative_paths_with_opt_in() {
+        let err = validate_cli_binary_path(Path::new("./bin/provenact-cli"), true)
+            .expect_err("must fail");
         assert!(matches!(err, SdkError::InvalidRequest(_)));
     }
 }
