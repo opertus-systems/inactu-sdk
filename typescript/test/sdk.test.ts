@@ -332,6 +332,46 @@ test("smoke verify against local provenact vector when configured", async (t: Te
   assert.match(out.stdout, /^OK (verify )?artifact=sha256:[a-f0-9]{64} signers=\d+$/m);
 });
 
+test("CliRunner rejects relative path binaries even when PATH lookup is enabled", async () => {
+  const previous = process.env.PROVENACT_ALLOW_PATH_CLI;
+  process.env.PROVENACT_ALLOW_PATH_CLI = "1";
+  try {
+    const runner = new CliRunner("./bin/provenact-cli");
+    await assert.rejects(() => runner.run(["version"]), (err: unknown) => {
+      assert.ok(err instanceof SdkError);
+      assert.equal((err as SdkError).code, "INVALID_REQUEST");
+      assert.match((err as SdkError).message, /simple command name/);
+      return true;
+    });
+  } finally {
+    if (previous === undefined) {
+      delete process.env.PROVENACT_ALLOW_PATH_CLI;
+    } else {
+      process.env.PROVENACT_ALLOW_PATH_CLI = previous;
+    }
+  }
+});
+
+test("CliRunner allows PATH lookup for simple command names when enabled", async () => {
+  const previous = process.env.PROVENACT_ALLOW_PATH_CLI;
+  process.env.PROVENACT_ALLOW_PATH_CLI = "1";
+  try {
+    const runner = new CliRunner("definitely-missing-provenact-cli");
+    await assert.rejects(() => runner.run(["version"]), (err: unknown) => {
+      assert.ok(err instanceof SdkError);
+      // Validation passed and process spawn was attempted.
+      assert.equal((err as SdkError).code, "IO_ERROR");
+      return true;
+    });
+  } finally {
+    if (previous === undefined) {
+      delete process.env.PROVENACT_ALLOW_PATH_CLI;
+    } else {
+      process.env.PROVENACT_ALLOW_PATH_CLI = previous;
+    }
+  }
+});
+
 async function sha256File(path: string): Promise<string> {
   const data = await readFile(path);
   return `sha256:${createHash("sha256").update(data).digest("hex")}`;

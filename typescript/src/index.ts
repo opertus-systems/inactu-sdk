@@ -85,13 +85,9 @@ export class CliRunner implements CommandRunner {
   run(args: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
       const allowPathCli = /^(1|true)$/i.test(process.env.PROVENACT_ALLOW_PATH_CLI ?? "");
-      if (!isAbsolute(this.bin) && !allowPathCli) {
-        reject(
-          new SdkError(
-            "INVALID_REQUEST",
-            "CliRunner binary must be an absolute path; set PROVENACT_ALLOW_PATH_CLI=1 to opt into PATH lookup"
-          )
-        );
+      const binaryError = validateCliBinary(this.bin, allowPathCli);
+      if (binaryError) {
+        reject(binaryError);
         return;
       }
       const child = spawn(this.bin, args, { stdio: ["ignore", "pipe", "pipe"] });
@@ -283,4 +279,31 @@ function isValidSha256PrefixedHex(value: string): boolean {
     return false;
   }
   return /^[0-9a-f]+$/.test(digest);
+}
+
+function validateCliBinary(bin: string, allowPathCli: boolean): SdkError | null {
+  if (isAbsolute(bin)) {
+    return null;
+  }
+  if (!allowPathCli) {
+    return new SdkError(
+      "INVALID_REQUEST",
+      "CliRunner binary must be an absolute path; set PROVENACT_ALLOW_PATH_CLI=1 to opt into PATH lookup"
+    );
+  }
+  if (!isPathLookupName(bin)) {
+    return new SdkError(
+      "INVALID_REQUEST",
+      "CliRunner binary must be a simple command name when PROVENACT_ALLOW_PATH_CLI=1"
+    );
+  }
+  return null;
+}
+
+function isPathLookupName(bin: string): boolean {
+  const trimmed = bin.trim();
+  if (!trimmed || trimmed !== bin) {
+    return false;
+  }
+  return !trimmed.includes("/") && !trimmed.includes("\\");
 }
