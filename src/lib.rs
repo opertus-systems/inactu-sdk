@@ -439,10 +439,12 @@ pub mod experimental {
         runner: &impl CommandRunner,
         manifest: impl AsRef<Path>,
     ) -> Result<String> {
+        let manifest = manifest.as_ref();
+        validate_required_path(manifest, "manifest", "experimental.validate_manifest_v1")?;
         runner.run([
             "experimental-validate-manifest-v1",
             "--manifest",
-            &manifest.as_ref().display().to_string(),
+            &manifest.display().to_string(),
         ])
     }
 
@@ -450,10 +452,12 @@ pub mod experimental {
         runner: &impl CommandRunner,
         receipt: impl AsRef<Path>,
     ) -> Result<String> {
+        let receipt = receipt.as_ref();
+        validate_required_path(receipt, "receipt", "experimental.validate_receipt_v1")?;
         runner.run([
             "experimental-validate-receipt-v1",
             "--receipt",
-            &receipt.as_ref().display().to_string(),
+            &receipt.display().to_string(),
         ])
     }
 }
@@ -814,6 +818,38 @@ mod tests {
     #[test]
     fn cli_binary_validation_rejects_relative_paths_with_opt_in() {
         let err = validate_cli_binary_path(Path::new("./bin/provenact-cli"), true)
+            .expect_err("must fail");
+        assert!(matches!(err, SdkError::InvalidRequest(_)));
+    }
+
+    #[test]
+    fn experimental_manifest_validation_rejects_empty_path() {
+        let runner = FakeRunner::default();
+        let err =
+            experimental::validate_manifest_v1(&runner, PathBuf::new()).expect_err("must fail");
+        assert!(matches!(err, SdkError::InvalidRequest(_)));
+    }
+
+    #[test]
+    fn experimental_manifest_validation_rejects_control_characters() {
+        let runner = FakeRunner::default();
+        let err = experimental::validate_manifest_v1(&runner, PathBuf::from("manifest\n.json"))
+            .expect_err("must fail");
+        assert!(matches!(err, SdkError::InvalidRequest(_)));
+    }
+
+    #[test]
+    fn experimental_receipt_validation_rejects_empty_path() {
+        let runner = FakeRunner::default();
+        let err =
+            experimental::validate_receipt_v1(&runner, PathBuf::new()).expect_err("must fail");
+        assert!(matches!(err, SdkError::InvalidRequest(_)));
+    }
+
+    #[test]
+    fn experimental_receipt_validation_rejects_control_characters() {
+        let runner = FakeRunner::default();
+        let err = experimental::validate_receipt_v1(&runner, PathBuf::from("receipt\n.json"))
             .expect_err("must fail");
         assert!(matches!(err, SdkError::InvalidRequest(_)));
     }

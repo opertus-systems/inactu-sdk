@@ -9,6 +9,7 @@ import {
   CliRunner,
   ProvenactSdk,
   SdkError,
+  experimental,
   type CommandRunner,
   type ExecuteRequest,
   type VerifyRequest,
@@ -398,6 +399,50 @@ test("CliRunner allows PATH lookup for simple command names when enabled", async
       process.env.PROVENACT_ALLOW_PATH_CLI = previous;
     }
   }
+});
+
+test("experimental validateManifestV1 rejects blank paths", async () => {
+  const runner = new FakeRunner();
+
+  await assert.rejects(() => experimental.validateManifestV1(runner, " "), (err: unknown) => {
+    assert.ok(err instanceof SdkError);
+    assert.equal((err as SdkError).code, "INVALID_REQUEST");
+    assert.match((err as SdkError).message, /manifest/);
+    return true;
+  });
+});
+
+test("experimental validateManifestV1 rejects control characters", async () => {
+  const runner = new FakeRunner();
+
+  await assert.rejects(() => experimental.validateManifestV1(runner, "manifest\n.json"), (err: unknown) => {
+    assert.ok(err instanceof SdkError);
+    assert.equal((err as SdkError).code, "INVALID_REQUEST");
+    assert.match((err as SdkError).message, /manifest/);
+    return true;
+  });
+});
+
+test("experimental validateReceiptV1 rejects blank paths", async () => {
+  const runner = new FakeRunner();
+
+  await assert.rejects(() => experimental.validateReceiptV1(runner, " "), (err: unknown) => {
+    assert.ok(err instanceof SdkError);
+    assert.equal((err as SdkError).code, "INVALID_REQUEST");
+    assert.match((err as SdkError).message, /receipt/);
+    return true;
+  });
+});
+
+test("experimental validateReceiptV1 rejects control characters", async () => {
+  const runner = new FakeRunner();
+
+  await assert.rejects(() => experimental.validateReceiptV1(runner, "receipt\n.json"), (err: unknown) => {
+    assert.ok(err instanceof SdkError);
+    assert.equal((err as SdkError).code, "INVALID_REQUEST");
+    assert.match((err as SdkError).message, /receipt/);
+    return true;
+  });
 });
 
 async function sha256File(path: string): Promise<string> {

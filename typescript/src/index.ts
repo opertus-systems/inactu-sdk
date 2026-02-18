@@ -202,11 +202,13 @@ export class ProvenactSdk {
 
 export const experimental = {
   async validateManifestV1(runner: CommandRunner, manifest: string): Promise<string> {
-    return runner.run(["experimental-validate-manifest-v1", "--manifest", manifest]);
+    const manifestPath = validateRequiredPath(manifest, "manifest");
+    return runner.run(["experimental-validate-manifest-v1", "--manifest", manifestPath]);
   },
 
   async validateReceiptV1(runner: CommandRunner, receipt: string): Promise<string> {
-    return runner.run(["experimental-validate-receipt-v1", "--receipt", receipt]);
+    const receiptPath = validateRequiredPath(receipt, "receipt");
+    return runner.run(["experimental-validate-receipt-v1", "--receipt", receiptPath]);
   },
 };
 
