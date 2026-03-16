@@ -197,6 +197,25 @@ test("parseReceipt rejects oversized files", async () => {
   });
 });
 
+test("parseReceipt accepts files at the maximum size", async () => {
+  const runner = new FakeRunner();
+  const sdk = new ProvenactSdk(runner);
+  const dir = await mkdtemp(join(tmpdir(), "provenact-sdk-ts-"));
+  const receiptPath = join(dir, "receipt.json");
+  const payloadPrefix = '{"schema":"';
+  const payloadSuffix = '"}';
+  const fillerLength =
+    1_048_576 - Buffer.byteLength(payloadPrefix) - Buffer.byteLength(payloadSuffix);
+  await writeFile(
+    receiptPath,
+    payloadPrefix + "x".repeat(fillerLength) + payloadSuffix,
+    "utf8"
+  );
+
+  const receipt = await sdk.parseReceipt(receiptPath);
+  assert.ok(typeof (receipt.raw as { schema?: unknown }).schema === "string");
+});
+
 test("verifyBundle rejects missing keysDigest", async () => {
   const runner = new FakeRunner();
   const sdk = new ProvenactSdk(runner);
