@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { open } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { isAbsolute } from "node:path";
 
@@ -163,39 +163,48 @@ export class ProvenactSdk {
 
   async parseReceipt(path: string): Promise<Receipt> {
     const receiptPath = validateRequiredPath(path, "receipt");
-    let metadata: Awaited<ReturnType<typeof stat>>;
+    let fileHandle: Awaited<ReturnType<typeof open>> | null = null;
+
     try {
-      metadata = await stat(receiptPath);
+      fileHandle = await open(receiptPath, "r");
     } catch (err) {
       throw new SdkError("IO_ERROR", (err as Error).message);
     }
-    if (!metadata.isFile()) {
-      throw new SdkError("INVALID_REQUEST", "receipt path must point to a regular file");
-    }
-    if (metadata.size > MAX_RECEIPT_BYTES) {
-      throw new SdkError(
-        "INVALID_REQUEST",
-        `receipt file exceeds maximum size of ${MAX_RECEIPT_BYTES} bytes`
-      );
-    }
 
-    let data: Buffer;
     try {
-      data = await readFile(receiptPath);
+      const metadata = await fileHandle.stat();
+      if (!metadata.isFile()) {
+        throw new SdkError("INVALID_REQUEST", "receipt path must point to a regular file");
+      }
+
+      const readBuffer = Buffer.allocUnsafe(MAX_RECEIPT_BYTES + 1);
+      const { bytesRead } = await fileHandle.read(readBuffer, 0, readBuffer.length, 0);
+      if (bytesRead > MAX_RECEIPT_BYTES) {
+        throw new SdkError(
+          "INVALID_REQUEST",
+          `receipt file exceeds maximum size of ${MAX_RECEIPT_BYTES} bytes`
+        );
+      }
+
+      const data = readBuffer.subarray(0, bytesRead);
+      try {
+        return { raw: JSON.parse(data.toString("utf8")) };
+      } catch (err) {
+        throw new SdkError("JSON_ERROR", (err as Error).message);
+      }
     } catch (err) {
+      if (err instanceof SdkError) {
+        throw err;
+      }
       throw new SdkError("IO_ERROR", (err as Error).message);
-    }
-    if (data.byteLength > MAX_RECEIPT_BYTES) {
-      throw new SdkError(
-        "INVALID_REQUEST",
-        `receipt file exceeds maximum size of ${MAX_RECEIPT_BYTES} bytes`
-      );
-    }
-
-    try {
-      return { raw: JSON.parse(data.toString("utf8")) };
-    } catch (err) {
-      throw new SdkError("JSON_ERROR", (err as Error).message);
+    } finally {
+      if (fileHandle) {
+        try {
+          await fileHandle.close();
+        } catch {
+          // ignore close failures after parse attempts
+        }
+      }
     }
   }
 }
